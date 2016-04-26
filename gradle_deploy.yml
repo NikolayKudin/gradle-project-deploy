@@ -1,5 +1,5 @@
 ---
-- hosts: "{{lookup('ini', 'hosts type=properties file=gradle_deploy.properties')}}" # Read which hosts should be used
+- hosts: hosts
   remote_user: '{{user}}' # Define ssh user for remote connection
 
   vars:
