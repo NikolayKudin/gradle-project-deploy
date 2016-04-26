@@ -1,0 +1,53 @@
+---
+- name: Set retries amount and delay
+  set_fact:
+    retries="{{lookup('ini', 'build.job.status.check.retries type=properties file=gradle_deploy.properties')}}"
+    delay="{{lookup('ini', 'build.job.status.check.delay type=properties file=gradle_deploy.properties')}}"
+
+- name: Build
+  shell: chdir={{source_dir}} touch {{source_dir}}/.lock && gradle clean build && rm {{source_dir}}/.lock
+  async: 1000
+  poll: 0
+  register: build_job
+
+- name: Check build job status
+  async_status: jid={{build_job.ansible_job_id}}
+  register: build_job_result
+  until: build_job_result.finished
+  retries: "{{retries}}"
+  delay: "{{delay}}"
+  ignore_errors: true
+
+
+- name: Find stacked build processes
+  shell: pgrep -f gradle
+  register: pids
+  when: "{{build_job_result.finished == 0}}"
+
+- name: Kill stacked build processes
+  shell: kill -9 {{item}}
+  with_items: "{{ pids.stdout_lines | default([])}}"
+  when: "{{build_job_result.finished == 0}}"
+
+- name: Check if lock file exists
+  stat: path={{source_dir}}/.lock
+  register: lock_st
+
+- name: Define build status
+  set_fact: build_status={{lock_st.stat.exists | ternary("failed", "success")}}
+
+- debug: var=build_job_result
+
+- name: Define build log
+  set_fact: build_log="{{build_job_result.failed is defined | ternary('{{ build_job_result.stdout_lines | join("\n")}}', 'Failed by timeout')}}"
+  when: "{{build_status=='failed'}}"
+
+- name: Define build log
+  set_fact: build_log="{{build_log + '\n\n' + build_job_result.stderr}}"
+  when: "{{build_status=='failed' and build_job_result.stderr!=''}}"
+
+
+- debug: var=build_log
+
+- name: Remove lock file
+  file: path={{source_dir}}/.lock state=absent

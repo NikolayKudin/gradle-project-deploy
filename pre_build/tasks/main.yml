@@ -1,0 +1,9 @@
+---
+- name: Copy <env>.properties file
+  copy: src={{source_dir}}/src/main/build-properties/{{env}}.properties dest={{source_dir}}/build.properties
+
+- name: Build mview plugin
+  shell: chdir={{source_dir}}/mview-plugin gradle pTML
+
+- name: Build libraries
+  shell: chdir={{source_dir}}/lib gradle pTML

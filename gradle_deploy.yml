@@ -1,0 +1,18 @@
+---
+- hosts: "{{lookup('ini', 'hosts type=properties file=gradle_deploy.properties')}}" # Read which hosts should be used
+  remote_user: '{{user}}' # Define ssh user for remote connection
+
+  vars:
+    project_name: "{{lookup('ini', 'project.name type=properties file=gradle_deploy.properties')}}" # Project name
+    env: "{{lookup('ini', 'env type=properties file=gradle_deploy.properties')}}" # Environment type. Can be: dev, ci, sit, prod
+    source_dir: "{{lookup('ini', 'source type=properties file=gradle_deploy.properties default=/tmp/{{project_name}}_{{env}}_src')}}" # Folder where sources will be checked out
+    build_status: '' # Initialization of global variable for build status definition
+    build_log: '' # Initialization of global variable for build log definition
+
+  roles:
+    - role: update_sources # Checkout or update the code
+    - role: pre_build # Checkout or update the code
+    - role: build # Build :)
+#    - { role: build, when: build_status =='failed' } # Try to build one more time in case of error
+#    - { role: build, when: build_status=='failed' } # Try to build one more time in case of error
+    - role: raise_message # Provide feedback

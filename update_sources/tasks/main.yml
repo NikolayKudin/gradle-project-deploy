@@ -1,0 +1,10 @@
+---
+- name: Read subversion variables
+  set_fact:
+    svn:
+      source: "{{lookup('ini', 'svn.source type=properties file=gradle_deploy.properties')}}"
+      user: "{{lookup('ini', 'svn.user type=properties file=gradle_deploy.properties')}}"
+      pass: "{{svnpassword}}"
+
+- name: Update sources
+  subversion: password={{svn.pass}} username={{svn.user}} repo={{svn.source}} dest={{source_dir}}

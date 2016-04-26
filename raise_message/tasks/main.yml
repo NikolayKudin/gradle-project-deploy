@@ -1,0 +1,45 @@
+---
+- name: Read mail variables
+  set_fact:
+    mail:
+      is_required: "{{lookup('ini', 'mail.is_required type=properties file=gradle_deploy.properties')}}"
+      smtp_host: "{{lookup('ini', 'smtp.host type=properties file=mail.properties')}}"
+      smtp_port: "{{lookup('ini', 'smtp.port type=properties file=mail.properties')}}"
+      account: "{{lookup('ini', 'account type=properties file=mail.properties')}}"
+      password: "{{lookup('ini', 'password type=properties file=mail.properties')}}"
+      to: "{{lookup('ini', 'to type=properties file=mail.properties')}}"
+    sms:
+      is_required: "{{lookup('ini', 'sms.is_required type=properties file=gradle_deploy.properties')}}"
+      api_key: "{{lookup('ini', 'api.key type=properties file=sms.properties')}}"
+      api_secret: "{{lookup('ini', 'api.secret type=properties file=sms.properties')}}"
+      from: "{{lookup('ini', 'from type=properties file=sms.properties')}}"
+      to: "{{lookup('ini', 'to type=properties file=sms.properties').split(',')}}"
+
+- name: Set build log
+  set_fact: build_log=" Please see details below:\n\n\n{{build_log}}"
+  when: "{{build_log != ''}}"
+
+- name: Set mail body
+  set_fact: mail_body="Hello,\n\nBuild {{build_status}}.{{build_log}}"
+
+- name: Send Email
+  local_action:
+    module: mail
+    host: "{{mail.smtp_host}}"
+    port: "{{mail.smtp_port}}"
+    username: "{{mail.account}}"
+    password: "{{mail.password}}"
+    to: "{{mail.to}}"
+    subject: "[{{project_name|upper}}][{{env|upper}}][BUILD] Build {{build_status}}"
+    body: "{{mail_body}}"
+  when: "{{mail.is_required}}"
+
+- name: Send SMS
+  local_action:
+    module: nexmo
+    api_key: "{{sms.api_key}}"
+    api_secret: "{{sms.api_secret}}"
+    src: "{{sms.from}}"
+    dest: "{{sms.to}}"
+    msg: "{{ env|upper }} build {{build_status}}"
+  when: "{{sms.is_required}}"
